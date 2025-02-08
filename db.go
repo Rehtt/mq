@@ -66,6 +66,8 @@ func OpenDB(workPath string) error {
 	d.Exec("pragma synchronous = normal")
 	d.Exec("pragma temp_store = memory")
 	d.Exec("pragma auto_vacuum = INCREMENTAL")
+	// 空间回收
+	d.Exec("pragma incremental_vacuum")
 	db = d
 	return nil
 }
@@ -104,10 +106,22 @@ func writeMq(option writeMqOption, mq string, text string, retryTime *time.Time,
 
 	writeMqOnce.Do(func() {
 		go func() {
+			var deleteNum int
+
 			for {
 				node := <-writeMqChan
 				handleWriteMq(node)
 				writeMqNodePool.Put(node)
+
+				if node.option == WRITE_MQ_DELETE {
+					deleteNum++
+					if deleteNum > 100 {
+						// 执行空间回收
+						db.Exec("pragma incremental_vacuum")
+						deleteNum = 0
+					}
+				}
+
 			}
 		}()
 	})
