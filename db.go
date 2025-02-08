@@ -15,7 +15,7 @@ import (
 )
 
 type Msg struct {
-	Id        uint64 `gorm:"column:id;index"`
+	Id        uint64 `gorm:"column:id;autoIncrement:false;index"`
 	Text      string `gorm:"column:text;type:text"`
 	Active    bool   `gorm:"column:active"`
 	CreatedAt time.Time
