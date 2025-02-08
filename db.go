@@ -61,11 +61,15 @@ func OpenDB(workPath string) error {
 		return err
 	}
 
-	// 开启日志，避免锁库
+	// 预写日志，避免并发读写锁库
 	d.Exec("pragma journal_mode = wal")
+	// 不等待完全写入磁盘
 	d.Exec("pragma synchronous = normal")
+	// 指定将临时数据存储在内存中
 	d.Exec("pragma temp_store = memory")
+	// 不立即回收空间，直到手动调用pragma incremental_vacuum才回收一次空间
 	d.Exec("pragma auto_vacuum = INCREMENTAL")
+
 	// 空间回收
 	d.Exec("pragma incremental_vacuum")
 	db = d
