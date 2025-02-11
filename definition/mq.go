@@ -50,6 +50,7 @@ const (
 	DELETE    = MqRpcName + ".Delete"
 	DROP      = MqRpcName + ".Drop"
 	ACTIVE    = MqRpcName + ".Active"
+	PING      = MqRpcName + ".Ping"
 )
 
 type MqRPC interface {
@@ -68,6 +69,8 @@ type MqRPC interface {
 	Drop(args MqDropArgs, reply *MqDropReply) (err error)
 
 	Active(args MqActiveArgs, reply *MqActiveReply) (err error)
+
+	Ping(PingArgs, *PingReply) (err error)
 }
 
 type CreateMqArgs struct {
@@ -121,3 +124,8 @@ type MqActiveArgs struct {
 	Id uint64
 }
 type MqActiveReply struct{}
+
+type (
+	PingArgs  struct{}
+	PingReply struct{}
+)

@@ -6,6 +6,10 @@ type MqRpc struct {
 	mq *Mq
 }
 
+func (m *MqRpc) Ping(_ definition.PingArgs, _ *definition.PingReply) (err error) {
+	return nil
+}
+
 func (m *MqRpc) CreateMq(args definition.CreateMqArgs, reply *definition.CreateMqReply) (err error) {
 	return m.mq.CreateMq(args.Mq)
 }

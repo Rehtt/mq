@@ -62,10 +62,22 @@ func (m *MqClient) Active(mq string, id uint64) (err error) {
 	return m.client.Call(definition.ACTIVE, definition.MqActiveArgs{Mq: mq, Id: id}, nil)
 }
 
+func (m *MqClient) Ping() (err error) {
+	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
+}
+
 func ConnectMq(addr string) (*MqClient, error) {
 	client, err := rpc.Dial("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	return &MqClient{client}, nil
+	mq := MqClient{client}
+	go func() {
+		t := time.NewTicker(time.Minute)
+		for {
+			<-t.C
+			mq.Ping()
+		}
+	}()
+	return &mq, nil
 }
