@@ -1,6 +1,6 @@
 module github.com/Rehtt/mq
 
-go 1.23.5
+go 1.24
 
 require (
 	github.com/Rehtt/Kit v0.1.8
