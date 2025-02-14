@@ -74,8 +74,10 @@ func OpenDB(workPath string) error {
 
 	// 空间回收
 	d.Exec("pragma incremental_vacuum")
-	db = d
-	return nil
+	db = d.Debug()
+	return d.AutoMigrate(
+		&ConfDB{},
+	)
 }
 
 func CloseDB() error {

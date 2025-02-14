@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
-	"net"
 	"net/rpc"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/Rehtt/mq/definition"
+	quic "github.com/quic-go/quic-go"
 )
 
 var (
@@ -24,18 +25,25 @@ func main() {
 	}
 
 	rpc.RegisterName(definition.MqRpcName, NewMqRpc())
-	listener, err := net.Listen("tcp", *addr)
+
+	listener, err := quic.ListenAddr(*addr, GenerateTLSConfig(), nil)
 	if err != nil {
 		panic(err)
 	}
 	slog.Info("server listen", "addr", listener.Addr().String())
 	go func() {
 		for {
-			conn, err := listener.Accept()
+			quicConn, err := listener.Accept(context.Background())
 			if err != nil {
 				continue
 			}
-			go rpc.ServeConn(conn)
+			go func(quicConn quic.Connection) {
+				stream, err := quicConn.AcceptStream(context.Background())
+				if err != nil {
+					return
+				}
+				rpc.ServeConn(stream)
+			}(quicConn)
 		}
 	}()
 

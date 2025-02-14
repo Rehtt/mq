@@ -1,10 +1,13 @@
 package sdk
 
 import (
+	"crypto/tls"
 	"net/rpc"
 	"time"
 
 	"github.com/Rehtt/mq/definition"
+	"github.com/quic-go/quic-go"
+	"golang.org/x/net/context"
 )
 
 var _ definition.Mq = (*MqClient)(nil)
@@ -66,11 +69,21 @@ func (m *MqClient) Ping() (err error) {
 	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
 }
 
-func ConnectMq(addr string) (*MqClient, error) {
-	client, err := rpc.Dial("tcp", addr)
+func ConnectMq(ctx context.Context, addr string) (*MqClient, error) {
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+		NextProtos:         []string{"rehtt-mq"},
+	}
+
+	quicClient, err := quic.DialAddr(ctx, addr, tlsConf, nil)
 	if err != nil {
 		return nil, err
 	}
+	stream, err := quicClient.OpenStream()
+	if err != nil {
+		return nil, err
+	}
+	client := rpc.NewClient(stream)
 	mq := MqClient{client}
 	go func() {
 		t := time.NewTicker(time.Minute)
