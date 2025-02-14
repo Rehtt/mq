@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/tls"
 	"net/rpc"
+	"net/url"
 	"time"
 
 	"github.com/Rehtt/mq/definition"
@@ -69,10 +70,16 @@ func (m *MqClient) Ping() (err error) {
 	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
 }
 
-func ConnectMq(ctx context.Context, addr string) (*MqClient, error) {
+func ConnectMq(ctx context.Context, addr string, safe bool) (*MqClient, error) {
 	tlsConf := &tls.Config{
-		InsecureSkipVerify: true,
-		NextProtos:         []string{"rehtt-mq"},
+		NextProtos: []string{"mq"},
+	}
+	if !safe {
+		tlsConf.InsecureSkipVerify = true
+	}
+	u, err := url.Parse(addr)
+	if err == nil {
+		tlsConf.ServerName = u.Host
 	}
 
 	quicClient, err := quic.DialAddr(ctx, addr, tlsConf, nil)

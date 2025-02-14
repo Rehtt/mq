@@ -7,6 +7,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/Rehtt/mq/definition"
@@ -16,20 +17,35 @@ import (
 var (
 	addr     = flag.String("addr", ":1234", "server address")
 	workPath = flag.String("path", "./", "work path")
+
+	tlsCertFile = flag.String("cert", "cert.pem", "tls cert file")
+	tlsKeyFile  = flag.String("key", "key.pem", "tls key file")
 )
 
 func main() {
 	flag.Parse()
+
+	if !filepath.IsAbs(*tlsCertFile) {
+		*tlsCertFile = filepath.Join(*workPath, *tlsCertFile)
+	}
+	if !filepath.IsAbs(*tlsKeyFile) {
+		*tlsKeyFile = filepath.Join(*workPath, *tlsKeyFile)
+	}
+
 	if err := OpenDB(*workPath); err != nil {
 		panic(err)
 	}
 
-	rpc.RegisterName(definition.MqRpcName, NewMqRpc())
-
-	listener, err := quic.ListenAddr(*addr, GenerateTLSConfig(), nil)
+	tlsConf, err := InitTlsConfig(*tlsCertFile, *tlsKeyFile)
 	if err != nil {
 		panic(err)
 	}
+	listener, err := quic.ListenAddr(*addr, tlsConf, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	rpc.RegisterName(definition.MqRpcName, NewMqRpc())
 	slog.Info("server listen", "addr", listener.Addr().String())
 	go func() {
 		for {
