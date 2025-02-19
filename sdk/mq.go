@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"crypto/tls"
+	"errors"
+	"io"
 	"net/rpc"
 	"net/url"
 	"time"
@@ -70,7 +72,7 @@ func (m *MqClient) Ping() (err error) {
 	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
 }
 
-func ConnectMq(ctx context.Context, addr string, safe bool) (*MqClient, error) {
+func ConnectMq(ctx context.Context, addr string, safe bool, auth string) (*MqClient, error) {
 	tlsConf := &tls.Config{
 		NextProtos: []string{"mq"},
 	}
@@ -90,6 +92,11 @@ func ConnectMq(ctx context.Context, addr string, safe bool) (*MqClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if err := simpleAuth(stream, auth); err != nil {
+		return nil, err
+	}
+
 	client := rpc.NewClient(stream)
 	mq := MqClient{client}
 	go func() {
@@ -100,4 +107,17 @@ func ConnectMq(ctx context.Context, addr string, safe bool) (*MqClient, error) {
 		}
 	}()
 	return &mq, nil
+}
+
+func simpleAuth(rw io.ReadWriter, auth string) error {
+	rw.Write([]byte("@" + auth + "@"))
+	tmp := make([]byte, 7)
+	n, err := rw.Read(tmp)
+	if err != nil {
+		return err
+	}
+	if string(tmp[:n]) != "auth ok" {
+		return errors.New("auth failed")
+	}
+	return nil
 }

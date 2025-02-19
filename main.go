@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"flag"
+	"io"
 	"log/slog"
 	"net/rpc"
 	"os"
@@ -20,10 +23,13 @@ var (
 
 	tlsCertFile = flag.String("cert", "cert.pem", "tls cert file")
 	tlsKeyFile  = flag.String("key", "key.pem", "tls key file")
+
+	password = flag.String("password", "", "password")
 )
 
 func main() {
 	flag.Parse()
+	auth := []byte(authFlag + *password + authFlag)
 
 	if !filepath.IsAbs(*tlsCertFile) {
 		*tlsCertFile = filepath.Join(*workPath, *tlsCertFile)
@@ -58,6 +64,12 @@ func main() {
 				if err != nil {
 					return
 				}
+				defer stream.Close()
+
+				if err := simpleAuth(stream, auth); err != nil {
+					return
+				}
+
 				rpc.ServeConn(stream)
 			}(quicConn)
 		}
@@ -69,4 +81,24 @@ func main() {
 
 	CloseDB()
 	slog.Info("server shutdown")
+}
+
+const (
+	authFlag = "@"
+)
+
+func simpleAuth(rw io.ReadWriter, auth []byte) error {
+	tmp := make([]byte, len(auth))
+	n, err := rw.Read(tmp)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(tmp[:n], auth) {
+		rw.Write([]byte("auth failed"))
+		return errors.New("auth failed")
+	}
+	rw.Write([]byte("auth ok"))
+
+	return nil
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestMq(t *testing.T) {
-	client, err := ConnectMq(context.Background(), "127.0.0.1:1234", false)
+	client, err := ConnectMq(context.Background(), "127.0.0.1:1234", false, "")
 	if err != nil {
 		panic(err)
 	}

@@ -1,6 +1,8 @@
 package main
 
-import "github.com/Rehtt/mq/definition"
+import (
+	"github.com/Rehtt/mq/definition"
+)
 
 type MqRpc struct {
 	mq *Mq
@@ -49,5 +51,7 @@ func (m *MqRpc) Active(args definition.MqActiveArgs, reply *definition.MqActiveR
 }
 
 func NewMqRpc() *MqRpc {
-	return &MqRpc{NewMq()}
+	return &MqRpc{
+		mq: NewMq(),
+	}
 }
