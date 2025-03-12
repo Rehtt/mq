@@ -81,6 +81,10 @@ func (m *Mq) Push(mq string, msg string) (id uint64, err error) {
 func (m *Mq) Read(mq string, num int, timeout time.Duration) (msgs []definition.Msg, err error) {
 	msgs = make([]definition.Msg, 0, num)
 	m.list.SetByFunc(mq, func(value *MqMsg) *MqMsg {
+		if value == nil {
+			return value
+		}
+
 		var (
 			index     = value.headNode
 			retryTime = time.Now().Add(timeout)
@@ -112,6 +116,10 @@ func (m *Mq) Read(mq string, num int, timeout time.Duration) (msgs []definition.
 func (m *Mq) Pop(mq string, num int) (msgs []definition.Msg, err error) {
 	msgs = make([]definition.Msg, 0, num)
 	m.list.SetByFunc(mq, func(value *MqMsg) *MqMsg {
+		if value == nil {
+			return value
+		}
+
 		index := value.headNode
 		var retryNode *MqMsgNode
 		ids := make([]uint64, 0, num)
@@ -149,6 +157,10 @@ func (m *Mq) Pop(mq string, num int) (msgs []definition.Msg, err error) {
 // 从队列中删除指定消息
 func (m *Mq) Delete(mq string, id uint64) (err error) {
 	m.list.SetByFunc(mq, func(value *MqMsg) *MqMsg {
+		if value == nil {
+			return value
+		}
+
 		if value.headNode != nil && value.headNode.Msg.Id == id {
 			value.headNode = value.headNode.nextNode
 			if value.headNode == value.footNode {
