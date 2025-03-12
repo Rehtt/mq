@@ -91,4 +91,30 @@ func TestMq(t *testing.T) {
 			t.Fatal("Pop", "len", len(msgs))
 		}
 	}
+
+	if err := client.SetKeyValue(mq, "key", "value", 5*time.Second); err != nil {
+		t.Fatal("SetKeyValue", err)
+	}
+
+	if value, ok, err := client.GetKeyValue(mq, "key"); err != nil {
+		t.Fatal("GetKeyValue", err)
+	} else if !ok {
+		t.Fatal("GetKeyValue", "1ok", ok)
+	} else if value.Value != "value" {
+		t.Fatal("GetKeyValue", "value", value.Value)
+	}
+	time.Sleep(6 * time.Second)
+
+	if _, ok, err := client.GetKeyValue(mq, "key"); err != nil {
+		t.Fatal("GetKeyValue", err)
+	} else if ok {
+		t.Fatal("GetKeyValue", "2ok", ok)
+	}
+
+	if err := client.SetKeyValue(mq, "key", "value", 5*time.Second); err != nil {
+		t.Fatal("SetKeyValue", err)
+	}
+	if err := client.DeleteMq(mq); err != nil {
+		t.Fatal("DeleteMq", err)
+	}
 }

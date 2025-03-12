@@ -9,8 +9,11 @@ import (
 )
 
 type Mq struct {
-	list *maps.ConcurrentMap[*MqMsg]
+	list     *maps.ConcurrentMap[*MqMsg]
+	keyValue *maps.ConcurrentMap[*definition.Value]
 }
+
+var _ definition.Mq = (*Mq)(nil)
 
 type MqMsgNode struct {
 	definition.Msg            // 消息
@@ -27,7 +30,8 @@ type MqMsg struct {
 
 func NewMq() *Mq {
 	mq := &Mq{
-		list: findAllMqToMaps(),
+		list:     findAllMqToMaps(),
+		keyValue: findAllMqKVToMaps(),
 	}
 	return mq
 }
@@ -207,4 +211,39 @@ func (m *Mq) Drop(mq string) (err error) {
 	m.list.Delete(mq)
 	writeMq(WRITE_MQ_DROP_TABLE, mq, "", nil, 0)
 	return
+}
+
+// 设置键值对
+func (m *Mq) SetKeyValue(mq string, key string, value string, expire time.Duration) (err error) {
+	var exp time.Time
+	if expire > 0 {
+		exp = time.Now().Add(expire)
+	}
+
+	m.keyValue.SetByFunc(genKeyValueKey(mq, key), func(oldValue *definition.Value) *definition.Value {
+		if oldValue == nil {
+			oldValue = &definition.Value{}
+		}
+		oldValue.Value = value
+		oldValue.UpdatedAt = time.Now()
+		oldValue.ExpireAt = exp
+		writeMqKV(mq, key, oldValue)
+		return oldValue
+	}, expire)
+	return
+}
+
+func (m *Mq) GetKeyValue(mq string, key string) (value *definition.Value, ok bool, err error) {
+	value, ok = m.keyValue.Get(genKeyValueKey(mq, key))
+	return
+}
+
+func (m *Mq) DeleteKeyValue(mq string, key string) (err error) {
+	m.keyValue.Delete(genKeyValueKey(mq, key))
+	writeMqKV(mq, key, nil)
+	return
+}
+
+func genKeyValueKey(mq string, key string) string {
+	return "keyvalue:" + mq + ":" + key
 }

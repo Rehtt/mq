@@ -37,6 +37,28 @@ func NewMsg() *Msg {
 	return msg
 }
 
+type KV struct {
+	Key       string    `gorm:"column:key;type:varchar(255);primaryKey;not null"`
+	Value     string    `gorm:"column:value;type:text;not null"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+	ExpireAt  time.Time `gorm:"column:expire_at"`
+}
+
+var kvPool = sync.Pool{
+	New: func() any {
+		return &KV{}
+	},
+}
+
+func NewKV() *KV {
+	kv := kvPool.Get().(*KV)
+	kv.Key = ""
+	kv.Value = ""
+	kv.UpdatedAt = time.Time{}
+	kv.ExpireAt = time.Time{}
+	return kv
+}
+
 type writeMqOption int
 
 const (
@@ -50,7 +72,8 @@ const (
 )
 
 const (
-	MQ_TABLE_PREFIX = "mq_"
+	MQ_TABLE_PREFIX        = "mq_"
+	KEY_VALUE_TABLE_PREFIX = "kv_"
 )
 
 var db *gorm.DB
@@ -196,6 +219,38 @@ func findAllMqToMaps() *maps.ConcurrentMap[*MqMsg] {
 		}
 		mq.footNode = indexNode
 		m.Set(ss.TrimLeft(name, MQ_TABLE_PREFIX), mq)
+	}
+	return m
+}
+
+// TODO 落库
+func writeMqKV(mq string, key string, value *definition.Value) {
+}
+
+func getAllKVTableNames() []string {
+	var names []string
+	db.Table("sqlite_master").Where("type = 'table' AND name LIKE ?", KEY_VALUE_TABLE_PREFIX+"%").
+		Select("name").Pluck("name", &names)
+	return names
+}
+
+func findAllMqKVToMaps() *maps.ConcurrentMap[*definition.Value] {
+	m := maps.NewConcurrentMap[*definition.Value]()
+	for _, name := range getAllKVTableNames() {
+		var tmp []*KV
+		db.Table(name).Find(&tmp)
+
+		for _, v := range tmp {
+			if !v.ExpireAt.IsZero() && time.Since(v.ExpireAt) > 0 {
+				db.Table(name).Where("key = ?", v.Key).Delete(v)
+				continue
+			}
+			m.Set(genKeyValueKey(ss.TrimLeft(name, KEY_VALUE_TABLE_PREFIX), v.Key), &definition.Value{
+				Value:     v.Value,
+				UpdatedAt: v.UpdatedAt,
+				ExpireAt:  v.ExpireAt,
+			})
+		}
 	}
 	return m
 }

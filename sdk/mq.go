@@ -72,6 +72,32 @@ func (m *MqClient) Ping() (err error) {
 	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
 }
 
+// 设置键值对
+func (m *MqClient) SetKeyValue(mq string, key string, value string, expire time.Duration) (err error) {
+	args := definition.MqSetKeyValueArgs{
+		Mq:    mq,
+		Key:   key,
+		Value: value,
+	}
+	if expire > 0 {
+		t := time.Now().Add(expire)
+		args.Expire = &t
+	}
+	return m.client.Call(definition.SET_KEY_VALUE, args, nil)
+}
+
+func (m *MqClient) GetKeyValue(mq string, key string) (value *definition.Value, ok bool, err error) {
+	var reply definition.MqGetKeyValueReply
+	if err = m.client.Call(definition.GET_KEY_VALUE, definition.MqGetKeyValueArgs{Mq: mq, Key: key}, &reply); err != nil {
+		return
+	}
+	return reply.Value, reply.Ok, nil
+}
+
+func (m *MqClient) DeleteKeyValue(mq string, key string) (err error) {
+	return m.client.Call(definition.DELETE_KEY_VALUE, definition.MqDeleteKeyValueArgs{Mq: mq, Key: key}, nil)
+}
+
 func ConnectMq(ctx context.Context, addr string, safe bool, auth string) (*MqClient, error) {
 	tlsConf := &tls.Config{
 		NextProtos: []string{"mq"},

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"time"
+
 	"github.com/Rehtt/mq/definition"
 )
 
 type MqRpc struct {
 	mq *Mq
 }
+
+var _ definition.MqRPC = (*MqRpc)(nil)
 
 func (m *MqRpc) Ping(_ definition.PingArgs, _ *definition.PingReply) (err error) {
 	return nil
@@ -48,6 +52,26 @@ func (m *MqRpc) Drop(args definition.MqDropArgs, reply *definition.MqDropReply) 
 
 func (m *MqRpc) Active(args definition.MqActiveArgs, reply *definition.MqActiveReply) (err error) {
 	return m.mq.Active(args.Mq, args.Id)
+}
+
+func (m *MqRpc) SetKeyValue(args definition.MqSetKeyValueArgs, reply *definition.MqSetKeyValueReply) (err error) {
+	var exp time.Duration
+	if args.Expire != nil && !args.Expire.IsZero() {
+		exp = args.Expire.Sub(time.Now())
+		if exp < 0 {
+			return nil
+		}
+	}
+	return m.mq.SetKeyValue(args.Mq, args.Key, args.Value, exp)
+}
+
+func (m *MqRpc) GetKeyValue(args definition.MqGetKeyValueArgs, reply *definition.MqGetKeyValueReply) (err error) {
+	reply.Value, reply.Ok, err = m.mq.GetKeyValue(args.Mq, args.Key)
+	return
+}
+
+func (m *MqRpc) DeleteKeyValue(args definition.MqDeleteKeyValueArgs, reply *definition.MqDeleteKeyValueReply) (err error) {
+	return m.mq.DeleteKeyValue(args.Mq, args.Key)
 }
 
 func NewMqRpc() *MqRpc {

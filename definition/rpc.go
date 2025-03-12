@@ -5,20 +5,23 @@ import "time"
 const (
 	MqRpcName = "MqRpc"
 
-	AUTH      = MqRpcName + ".Auth"
-	CREATE_MQ = MqRpcName + ".CreateMq"
-	DELETE_MQ = MqRpcName + ".DeleteMq"
-	PUSH      = MqRpcName + ".Push"
-	READ      = MqRpcName + ".Read"
-	POP       = MqRpcName + ".Pop"
-	DELETE    = MqRpcName + ".Delete"
-	DROP      = MqRpcName + ".Drop"
-	ACTIVE    = MqRpcName + ".Active"
-	PING      = MqRpcName + ".Ping"
+	AUTH             = MqRpcName + ".Auth"
+	CREATE_MQ        = MqRpcName + ".CreateMq"
+	DELETE_MQ        = MqRpcName + ".DeleteMq"
+	PUSH             = MqRpcName + ".Push"
+	READ             = MqRpcName + ".Read"
+	POP              = MqRpcName + ".Pop"
+	DELETE           = MqRpcName + ".Delete"
+	DROP             = MqRpcName + ".Drop"
+	ACTIVE           = MqRpcName + ".Active"
+	PING             = MqRpcName + ".Ping"
+	SET_KEY_VALUE    = MqRpcName + ".SetKeyValue"
+	GET_KEY_VALUE    = MqRpcName + ".GetKeyValue"
+	DELETE_KEY_VALUE = MqRpcName + ".DeleteKeyValue"
 )
 
 type MqRPC interface {
-	Auth(args AuthArgs, reply *AuthReply) (err error)
+	// Auth(args AuthArgs, reply *AuthReply) (err error)
 
 	CreateMq(args CreateMqArgs, reply *CreateMqReply) (err error)
 
@@ -36,13 +39,17 @@ type MqRPC interface {
 
 	Active(args MqActiveArgs, reply *MqActiveReply) (err error)
 
+	SetKeyValue(args MqSetKeyValueArgs, reply *MqSetKeyValueReply) (err error)
+	GetKeyValue(args MqGetKeyValueArgs, reply *MqGetKeyValueReply) (err error)
+	DeleteKeyValue(args MqDeleteKeyValueArgs, reply *MqDeleteKeyValueReply) (err error)
+
 	Ping(PingArgs, *PingReply) (err error)
 }
 
-type AuthArgs struct {
-	Token string
-}
-type AuthReply struct{}
+// type AuthArgs struct {
+// 	Token string
+// }
+// type AuthReply struct{}
 
 type CreateMqArgs struct {
 	Mq string
@@ -100,3 +107,26 @@ type (
 	PingArgs  struct{}
 	PingReply struct{}
 )
+
+type MqSetKeyValueArgs struct {
+	Mq     string
+	Key    string
+	Value  string
+	Expire *time.Time
+}
+type MqSetKeyValueReply struct{}
+
+type MqGetKeyValueArgs struct {
+	Mq  string
+	Key string
+}
+type MqGetKeyValueReply struct {
+	Value *Value
+	Ok    bool
+}
+
+type MqDeleteKeyValueArgs struct {
+	Mq  string
+	Key string
+}
+type MqDeleteKeyValueReply struct{}

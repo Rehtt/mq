@@ -1,5 +1,7 @@
 github.com/Rehtt/Kit v0.1.8 h1:TWkZCnmTkoFtZnCEBj0PLDflwme6TeAy0FzM85Gyj0E=
 github.com/Rehtt/Kit v0.1.8/go.mod h1:hY+IHQLhJ8yjVqaVR+R8CjwwsrR/+ZsHhc/Cq1OSAuw=
+github.com/Rehtt/Kit v0.1.9-0.20250312115212-b21dd077bea4 h1:23hsjFGg7LgXIvn+2S3BI2aNgaESLxyNMoDR3kbIIrM=
+github.com/Rehtt/Kit v0.1.9-0.20250312115212-b21dd077bea4/go.mod h1:hY+IHQLhJ8yjVqaVR+R8CjwwsrR/+ZsHhc/Cq1OSAuw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
