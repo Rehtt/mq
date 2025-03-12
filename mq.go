@@ -45,6 +45,12 @@ func (m *Mq) CreateMq(mq string) (err error) {
 // 向队列里添加消息
 func (m *Mq) Push(mq string, msg string) (id uint64, err error) {
 	id = m.list.SetByFunc(mq, func(value *MqMsg) *MqMsg {
+		// 创建队列
+		if value == nil {
+			value = &MqMsg{}
+			writeMq(WRITE_MQ_CREATE_TABLE, mq, "", nil)
+		}
+
 		value.index++
 		node := &MqMsgNode{
 			Msg: definition.Msg{
