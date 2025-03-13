@@ -5,7 +5,7 @@ COPY . /build
 WORKDIR /build
 
 RUN export GOPROXY=https://goproxy.io,direct && \
-  go mod tidy && \
+  apk update && apk add make git && \
   make tidy && make build
 
 
