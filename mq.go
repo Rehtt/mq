@@ -165,24 +165,21 @@ func (m *Mq) Delete(mq string, id uint64) (err error) {
 			return value
 		}
 
-		if value.headNode != nil && value.headNode.Msg.Id == id {
-			value.headNode = value.headNode.nextNode
-			if value.headNode == value.footNode {
-				value.footNode = nil
-			}
-			return value
-		}
 		var pre *MqMsgNode
-		for index := value.headNode; index != nil; {
-			if index.Msg.Id == id {
-				if pre != nil {
-					pre.nextNode = index.nextNode
-				}
-
-				break
+		for node := value.headNode; node != nil; node = node.nextNode {
+			if node.Id != id {
+				pre = node
+				continue
 			}
-			pre = index
-			index = index.nextNode
+			if pre != nil {
+				pre.nextNode = node.nextNode
+			}
+			if node == value.headNode {
+				value.headNode = node.nextNode
+			}
+			if node == value.footNode {
+				value.footNode = pre
+			}
 		}
 		writeMq(WRITE_MQ_DELETE, mq, "", nil, id)
 		return value
@@ -246,4 +243,22 @@ func (m *Mq) DeleteKeyValue(mq string, key string) (err error) {
 
 func genKeyValueKey(mq string, key string) string {
 	return "keyvalue:" + mq + ":" + key
+}
+
+func (m *Mq) Len(mq string) (int, error) {
+	value, ok := m.list.Get(mq)
+	if !ok || value == nil {
+		return 0, nil
+	}
+	var out int
+	for node := value.headNode; node != nil; node = node.nextNode {
+		if t := node.RetryTime; t != nil && time.Since(*t) < 0 {
+			continue
+		}
+		out++
+		if node == value.footNode {
+			break
+		}
+	}
+	return out, nil
 }

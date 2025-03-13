@@ -74,6 +74,11 @@ func (m *MqRpc) DeleteKeyValue(args definition.MqDeleteKeyValueArgs, reply *defi
 	return m.mq.DeleteKeyValue(args.Mq, args.Key)
 }
 
+func (m *MqRpc) Len(args definition.MqLenArgs, reply *definition.MqLenReply) (err error) {
+	reply.Len, err = m.mq.Len(args.Mq)
+	return err
+}
+
 func NewMqRpc() *MqRpc {
 	return &MqRpc{
 		mq: NewMq(),

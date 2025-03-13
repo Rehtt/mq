@@ -92,6 +92,24 @@ func TestMq(t *testing.T) {
 		}
 	}
 
+	client.Push(mq, "test len1")
+	client.Push(mq, "test len2")
+	client.Push(mq, "test len3")
+	client.Pop(mq, 1)
+	client.Push(mq, "test len4")
+	client.Read(mq, 2, 2*time.Second)
+	if l, err := client.Len(mq); err != nil {
+		t.Fatal("Len", err)
+	} else if l != 1 {
+		t.Fatal("Len", "len1", l)
+	}
+	time.Sleep(3 * time.Second)
+	if l, err := client.Len(mq); err != nil {
+		t.Fatal("Len", err)
+	} else if l != 3 {
+		t.Fatal("Len", "len2", l)
+	}
+
 	if err := client.SetKeyValue(mq, "key", "value", 5*time.Second); err != nil {
 		t.Fatal("SetKeyValue", err)
 	}

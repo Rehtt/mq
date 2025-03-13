@@ -15,6 +15,7 @@ const (
 	DROP             = MqRpcName + ".Drop"
 	ACTIVE           = MqRpcName + ".Active"
 	PING             = MqRpcName + ".Ping"
+	LEN              = MqRpcName + ".Len"
 	SET_KEY_VALUE    = MqRpcName + ".SetKeyValue"
 	GET_KEY_VALUE    = MqRpcName + ".GetKeyValue"
 	DELETE_KEY_VALUE = MqRpcName + ".DeleteKeyValue"
@@ -38,6 +39,8 @@ type MqRPC interface {
 	Drop(args MqDropArgs, reply *MqDropReply) (err error)
 
 	Active(args MqActiveArgs, reply *MqActiveReply) (err error)
+
+	Len(args MqLenArgs, reply *MqLenReply) (err error)
 
 	SetKeyValue(args MqSetKeyValueArgs, reply *MqSetKeyValueReply) (err error)
 	GetKeyValue(args MqGetKeyValueArgs, reply *MqGetKeyValueReply) (err error)
@@ -130,3 +133,10 @@ type MqDeleteKeyValueArgs struct {
 	Key string
 }
 type MqDeleteKeyValueReply struct{}
+
+type MqLenArgs struct {
+	Mq string
+}
+type MqLenReply struct {
+	Len int
+}

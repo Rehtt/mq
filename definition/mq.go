@@ -44,6 +44,9 @@ type Mq interface {
 	// 将消息存档
 	Active(mq string, id uint64) (err error)
 
+	// 获取队列长度
+	Len(mq string) (int, error)
+
 	// 设置键值对
 	SetKeyValue(mq string, key string, value string, expire time.Duration) (err error)
 

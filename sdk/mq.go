@@ -72,6 +72,13 @@ func (m *MqClient) Ping() (err error) {
 	return m.client.Call(definition.PING, definition.PingArgs{}, nil)
 }
 
+// 获取队列长度
+func (m *MqClient) Len(mq string) (int, error) {
+	var reply definition.MqLenReply
+	err := m.client.Call(definition.LEN, definition.MqLenArgs{Mq: mq}, &reply)
+	return reply.Len, err
+}
+
 // 设置键值对
 func (m *MqClient) SetKeyValue(mq string, key string, value string, expire time.Duration) (err error) {
 	args := definition.MqSetKeyValueArgs{
