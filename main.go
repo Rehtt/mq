@@ -31,6 +31,8 @@ func main() {
 	flag.Parse()
 	auth := []byte(authFlag + *password + authFlag)
 
+	showInfo()
+
 	if !filepath.IsAbs(*tlsCertFile) {
 		*tlsCertFile = filepath.Join(*workPath, *tlsCertFile)
 	}
@@ -52,7 +54,9 @@ func main() {
 	}
 
 	rpc.RegisterName(definition.MqRpcName, NewMqRpc())
+
 	slog.Info("server listen", "addr", listener.Addr().String())
+
 	go func() {
 		for {
 			quicConn, err := listener.Accept(context.Background())
