@@ -9,6 +9,10 @@
 - [x] 归档消息 `Archive(mq string, id uint64)`
 - [x] 读取消息并设置时间等待归档或删除，等待时间内该消息不会再被读取 `Read(mq string, num int, timeout time.Duration)`
 - [x] 删除消息 `Delete(mq string, id uint64)`
+- [x] 获取队列长度 `Len(mq string) int`
+- [x] 设置Key-Value `SetKeyValue(mq string, key string, value string, expire time.Duration)`
+- [x] 获取Key-Value `GetKeyValue(mq string, key string)`
+- [x] 删除Key-Value `DelKeyValue(mq string, key string)`
 
 ### 使用
 
