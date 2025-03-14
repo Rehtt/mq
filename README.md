@@ -27,5 +27,5 @@ mq -path ~/.config/mq/
 
 #### docker
 ```sh
-docker run -d -p 1234:1234 -v data:/data ghcr.io/rehtt/mq:master
+docker run -d -p 1234:1234 -v data:/data ghcr.io/rehtt/mq:latest
 ```
