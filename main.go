@@ -1,20 +1,16 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"errors"
 	"flag"
-	"io"
 	"log/slog"
-	"net/rpc"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 
-	"github.com/Rehtt/mq/definition"
-	quic "github.com/quic-go/quic-go"
+	"github.com/Rehtt/mq/internal/mq"
+	"github.com/Rehtt/mq/server"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -29,10 +25,10 @@ var (
 
 func main() {
 	flag.Parse()
-	auth := []byte(authFlag + *password + authFlag)
 
 	showInfo()
 
+	// 确保TLS证书路径是绝对路径
 	if !filepath.IsAbs(*tlsCertFile) {
 		*tlsCertFile = filepath.Join(*workPath, *tlsCertFile)
 	}
@@ -40,69 +36,57 @@ func main() {
 		*tlsKeyFile = filepath.Join(*workPath, *tlsKeyFile)
 	}
 
-	if err := OpenDB(*workPath); err != nil {
-		panic(err)
+	// 初始化数据库仓库
+	repo, err := mq.NewSQLiteRepository(*workPath)
+	if err != nil {
+		slog.Error("failed to initialize database", "error", err)
+		os.Exit(1)
 	}
+	defer repo.Close()
 
+	// 创建MQ服务
+	mqService := mq.NewService(repo)
+
+	// 初始化TLS配置
 	tlsConf, err := InitTlsConfig(*tlsCertFile, *tlsKeyFile)
 	if err != nil {
-		panic(err)
-	}
-	listener, err := quic.ListenAddr(*addr, tlsConf, nil)
-	if err != nil {
-		panic(err)
+		slog.Error("failed to initialize TLS config", "error", err)
+		os.Exit(1)
 	}
 
-	rpc.RegisterName(definition.MqRpcName, NewMqRpc())
+	creds := credentials.NewTLS(tlsConf)
 
-	slog.Info("server listen", "addr", listener.Addr().String())
+	// 创建认证拦截器
+	authInterceptor := server.NewAuthInterceptor(*password)
 
+	// 创建并启动gRPC服务器
+	grpcServer := server.NewGrpcServer(
+		mqService,
+		creds,
+		authInterceptor.UnaryInterceptor(),
+	)
+
+	// 在goroutine中启动服务器
+	errCh := make(chan error, 1)
 	go func() {
-		for {
-			quicConn, err := listener.Accept(context.Background())
-			if err != nil {
-				continue
-			}
-			go func(quicConn quic.Connection) {
-				stream, err := quicConn.AcceptStream(context.Background())
-				if err != nil {
-					return
-				}
-				defer stream.Close()
-
-				if err := simpleAuth(stream, auth); err != nil {
-					return
-				}
-
-				rpc.ServeConn(stream)
-			}(quicConn)
+		if err := grpcServer.Start(*addr); err != nil {
+			errCh <- err
 		}
 	}()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
-	<-sigChan
+	// 等待信号或启动错误
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	CloseDB()
-	slog.Info("server shutdown")
-}
-
-const (
-	authFlag = "@"
-)
-
-func simpleAuth(rw io.ReadWriter, auth []byte) error {
-	tmp := make([]byte, len(auth))
-	n, err := rw.Read(tmp)
-	if err != nil {
-		return err
+	select {
+	case err := <-errCh:
+		slog.Error("server failed to start", "error", err)
+		os.Exit(1)
+	case sig := <-sigCh:
+		slog.Info("received signal, shutting down", "signal", sig)
 	}
 
-	if !bytes.Equal(tmp[:n], auth) {
-		rw.Write([]byte("auth failed"))
-		return errors.New("auth failed")
-	}
-	rw.Write([]byte("auth ok"))
-
-	return nil
+	// 优雅关闭
+	grpcServer.Stop()
+	slog.Info("server shutdown completed")
 }

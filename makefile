@@ -4,6 +4,10 @@ VERSION=$(shell git describe --tags --always)
 tidy:
 	go mod tidy
 
+.PHONY: genapi
+genapi:
+	protoc --go_out=. --go-grpc_out=. api/proto/*.proto
+
 .PHONY: build
 build:
 	mkdir -p bin/ && go build -ldflags "-s -w -X main.Version=$(VERSION)" -trimpath -o ./bin/ 

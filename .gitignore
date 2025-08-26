@@ -1,5 +1,4 @@
 db
 db-*
-mq
 bin/
 *.pem

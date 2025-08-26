@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+package mq;
+
+option go_package = "api/pb";
+
+// MQ服务定义
+service MQ {
+  // 创建队列
+  rpc CreateMq(CreateMqRequest) returns (CreateMqResponse);
+  
+  // 删除队列
+  rpc DeleteMq(DeleteMqRequest) returns (DeleteMqResponse);
+  
+  // 向队列里添加消息
+  rpc Push(PushRequest) returns (PushResponse);
+  
+  // 读取指定条数消息，并设置超时时间
+  rpc Read(ReadRequest) returns (ReadResponse);
+  
+  // 从队列中读取指定条数消息并删除
+  rpc Pop(PopRequest) returns (PopResponse);
+  
+  // 从队列中删除指定消息
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  
+  // 清空队列
+  rpc Drop(DropRequest) returns (DropResponse);
+  
+  // 将消息存档
+  rpc Active(ActiveRequest) returns (ActiveResponse);
+  
+  // 获取队列长度
+  rpc Len(LenRequest) returns (LenResponse);
+  
+  // 设置键值对
+  rpc SetKeyValue(SetKeyValueRequest) returns (SetKeyValueResponse);
+  
+  // 获取键值对
+  rpc GetKeyValue(GetKeyValueRequest) returns (GetKeyValueResponse);
+  
+  // 删除键值对
+  rpc DeleteKeyValue(DeleteKeyValueRequest) returns (DeleteKeyValueResponse);
+}
+
+// 消息结构体
+message Msg {
+  uint64 id = 1;
+  string text = 2;
+  int64 created_at = 3; // unix timestamp
+}
+
+// 键值对结构体
+message Value {
+  string value = 1;
+  int64 updated_at = 2; // unix timestamp
+  int64 expire_at = 3;  // unix timestamp
+}
+
+// 创建队列请求
+message CreateMqRequest {
+  string mq = 1;
+}
+
+// 创建队列响应
+message CreateMqResponse {
+  string error = 1;
+}
+
+// 删除队列请求
+message DeleteMqRequest {
+  string mq = 1;
+}
+
+// 删除队列响应
+message DeleteMqResponse {
+  string error = 1;
+}
+
+// 推送消息请求
+message PushRequest {
+  string mq = 1;
+  string msg = 2;
+}
+
+// 推送消息响应
+message PushResponse {
+  uint64 id = 1;
+  string error = 2;
+}
+
+// 读取消息请求
+message ReadRequest {
+  string mq = 1;
+  int32 num = 2;
+  int64 timeout = 3; // 超时时间(秒)
+}
+
+// 读取消息响应
+message ReadResponse {
+  repeated Msg msgs = 1;
+  string error = 2;
+}
+
+// 弹出消息请求
+message PopRequest {
+  string mq = 1;
+  int32 num = 2;
+}
+
+// 弹出消息响应
+message PopResponse {
+  repeated Msg msgs = 1;
+  string error = 2;
+}
+
+// 删除指定消息请求
+message DeleteRequest {
+  string mq = 1;
+  uint64 id = 2;
+}
+
+// 删除指定消息响应
+message DeleteResponse {
+  string error = 1;
+}
+
+// 清空队列请求
+message DropRequest {
+  string mq = 1;
+}
+
+// 清空队列响应
+message DropResponse {
+  string error = 1;
+}
+
+// 消息存档请求
+message ActiveRequest {
+  string mq = 1;
+  uint64 id = 2;
+}
+
+// 消息存档响应
+message ActiveResponse {
+  string error = 1;
+}
+
+// 获取队列长度请求
+message LenRequest {
+  string mq = 1;
+}
+
+// 获取队列长度响应
+message LenResponse {
+  int32 length = 1;
+  string error = 2;
+}
+
+// 设置键值对请求
+message SetKeyValueRequest {
+  string mq = 1;
+  string key = 2;
+  string value = 3;
+  int64 expire = 4; // 过期时间(秒)
+}
+
+// 设置键值对响应
+message SetKeyValueResponse {
+  string error = 1;
+}
+
+// 获取键值对请求
+message GetKeyValueRequest {
+  string mq = 1;
+  string key = 2;
+}
+
+// 获取键值对响应
+message GetKeyValueResponse {
+  Value value = 1;
+  bool ok = 2;
+  string error = 3;
+}
+
+// 删除键值对请求
+message DeleteKeyValueRequest {
+  string mq = 1;
+  string key = 2;
+}
+
+// 删除键值对响应
+message DeleteKeyValueResponse {
+  string error = 1;
+}
+

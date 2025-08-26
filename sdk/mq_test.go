@@ -4,13 +4,24 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/Rehtt/mq/definition"
 )
 
+// TestMq 测试gRPC MQ客户端
 func TestMq(t *testing.T) {
 	client, err := ConnectMq(context.Background(), "127.0.0.1:1234", false, "")
 	if err != nil {
-		panic(err)
+		t.Skip("gRPC server not available:", err)
+		return
 	}
+	defer client.Close()
+
+	runMqTests(t, client)
+}
+
+// runMqTests 运行完整的MQ功能测试
+func runMqTests(t *testing.T, client definition.Mq) {
 	mq := "test-mq"
 
 	if err := client.DeleteMq(mq); err != nil {
