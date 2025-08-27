@@ -17,7 +17,9 @@ service MQ {
   
   // 读取指定条数消息，并设置超时时间
   rpc Read(ReadRequest) returns (ReadResponse);
-  
+
+  rpc ReadByStream(ReadRequest) returns (stream Msg);
+
   // 从队列中读取指定条数消息并删除
   rpc Pop(PopRequest) returns (PopResponse);
   

@@ -147,3 +147,61 @@ func runMqTests(t *testing.T, client definition.Mq) {
 		t.Fatal("DeleteMq", err)
 	}
 }
+
+// TestMqStream 测试流式读取功能
+func TestMqStream(t *testing.T) {
+	client, err := ConnectMq(context.Background(), "127.0.0.1:1234", false, "")
+	if err != nil {
+		t.Skip("gRPC server not available:", err)
+		return
+	}
+	defer client.Close()
+
+	mq := "test-stream-mq"
+
+	// 清理和准备数据
+	client.DeleteMq(mq)
+	if err := client.CreateMq(mq); err != nil {
+		t.Fatal("CreateMq", err)
+	}
+
+	// 推送测试消息
+	id1, _ := client.Push(mq, "stream-message-1")
+	id2, _ := client.Push(mq, "stream-message-2")
+	id3, _ := client.Push(mq, "stream-message-3")
+
+	// 测试流式读取
+	msgChan, err := client.ReadByStream(mq, 3, 5*time.Second)
+	if err != nil {
+		t.Fatal("ReadByStream", err)
+	}
+
+	// 收集从流中读取的消息
+	var receivedMessages []definition.Msg
+	for msg := range msgChan {
+		receivedMessages = append(receivedMessages, msg)
+	}
+
+	// 验证消息数量
+	if len(receivedMessages) != 3 {
+		t.Fatalf("expected 3 messages from stream, got %d", len(receivedMessages))
+	}
+
+	// 验证消息内容
+	expectedIds := []uint64{id1, id2, id3}
+	expectedTexts := []string{"stream-message-1", "stream-message-2", "stream-message-3"}
+
+	for i, msg := range receivedMessages {
+		if msg.Id != expectedIds[i] {
+			t.Errorf("expected message %d id %d, got %d", i, expectedIds[i], msg.Id)
+		}
+		if msg.Text != expectedTexts[i] {
+			t.Errorf("expected message %d text '%s', got '%s'", i, expectedTexts[i], msg.Text)
+		}
+	}
+
+	// 清理
+	if err := client.DeleteMq(mq); err != nil {
+		t.Fatal("DeleteMq", err)
+	}
+}

@@ -88,6 +88,46 @@ func (m *MqClient) Read(mq string, num int, timeout time.Duration) (msgs []defin
 	return msgs, nil
 }
 
+// ReadByStream 流式读取指定条数消息，并设置超时时间
+func (m *MqClient) ReadByStream(mq string, num int, timeout time.Duration) (<-chan definition.Msg, error) {
+	req := &pb.ReadRequest{
+		Mq:      mq,
+		Num:     int32(num),
+		Timeout: int64(timeout.Seconds()),
+	}
+
+	stream, err := m.client.ReadByStream(m.ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建消息通道
+	msgChan := make(chan definition.Msg, num)
+
+	// 在 goroutine 中接收流式消息
+	go func() {
+		defer close(msgChan)
+
+		for {
+			pbMsg, err := stream.Recv()
+			if err != nil {
+				// 流结束
+				return
+			}
+
+			msg := definition.Msg{
+				Id:        pbMsg.Id,
+				Text:      pbMsg.Text,
+				CreatedAt: time.Unix(pbMsg.CreatedAt, 0),
+			}
+
+			msgChan <- msg
+		}
+	}()
+
+	return msgChan, nil
+}
+
 // 从队列中读取指定条数消息并删除
 func (m *MqClient) Pop(mq string, num int) (msgs []definition.Msg, err error) {
 	req := &pb.PopRequest{Mq: mq, Num: int32(num)}

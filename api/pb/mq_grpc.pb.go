@@ -23,6 +23,7 @@ const (
 	MQ_DeleteMq_FullMethodName       = "/mq.MQ/DeleteMq"
 	MQ_Push_FullMethodName           = "/mq.MQ/Push"
 	MQ_Read_FullMethodName           = "/mq.MQ/Read"
+	MQ_ReadByStream_FullMethodName   = "/mq.MQ/ReadByStream"
 	MQ_Pop_FullMethodName            = "/mq.MQ/Pop"
 	MQ_Delete_FullMethodName         = "/mq.MQ/Delete"
 	MQ_Drop_FullMethodName           = "/mq.MQ/Drop"
@@ -47,6 +48,7 @@ type MQClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error)
 	// 读取指定条数消息，并设置超时时间
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	ReadByStream(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Msg], error)
 	// 从队列中读取指定条数消息并删除
 	Pop(ctx context.Context, in *PopRequest, opts ...grpc.CallOption) (*PopResponse, error)
 	// 从队列中删除指定消息
@@ -112,6 +114,25 @@ func (c *mQClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallO
 	}
 	return out, nil
 }
+
+func (c *mQClient) ReadByStream(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Msg], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &MQ_ServiceDesc.Streams[0], MQ_ReadByStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ReadRequest, Msg]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MQ_ReadByStreamClient = grpc.ServerStreamingClient[Msg]
 
 func (c *mQClient) Pop(ctx context.Context, in *PopRequest, opts ...grpc.CallOption) (*PopResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -207,6 +228,7 @@ type MQServer interface {
 	Push(context.Context, *PushRequest) (*PushResponse, error)
 	// 读取指定条数消息，并设置超时时间
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	ReadByStream(*ReadRequest, grpc.ServerStreamingServer[Msg]) error
 	// 从队列中读取指定条数消息并删除
 	Pop(context.Context, *PopRequest) (*PopResponse, error)
 	// 从队列中删除指定消息
@@ -244,6 +266,9 @@ func (UnimplementedMQServer) Push(context.Context, *PushRequest) (*PushResponse,
 }
 func (UnimplementedMQServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedMQServer) ReadByStream(*ReadRequest, grpc.ServerStreamingServer[Msg]) error {
+	return status.Errorf(codes.Unimplemented, "method ReadByStream not implemented")
 }
 func (UnimplementedMQServer) Pop(context.Context, *PopRequest) (*PopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Pop not implemented")
@@ -361,6 +386,17 @@ func _MQ_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _MQ_ReadByStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ReadRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MQServer).ReadByStream(m, &grpc.GenericServerStream[ReadRequest, Msg]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MQ_ReadByStreamServer = grpc.ServerStreamingServer[Msg]
 
 func _MQ_Pop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PopRequest)
@@ -562,6 +598,12 @@ var MQ_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MQ_DeleteKeyValue_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ReadByStream",
+			Handler:       _MQ_ReadByStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/proto/mq.proto",
 }

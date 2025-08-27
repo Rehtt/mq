@@ -1,6 +1,7 @@
 package mq
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -145,7 +146,7 @@ func (s *Service) Push(mq string, msg string) (uint64, error) {
 	go func() {
 		if err := s.repo.PushMessage(mq, msg, messageId); err != nil {
 			// 记录日志，但不影响返回结果
-			// TODO: 添加日志记录
+			slog.Error("failed to persist message", "mq", mq, "messageId", messageId, "error", err)
 		}
 	}()
 

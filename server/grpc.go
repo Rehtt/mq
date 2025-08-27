@@ -24,14 +24,19 @@ type GrpcServer struct {
 }
 
 // NewGrpcServer 创建gRPC服务器
-func NewGrpcServer(mqService definition.Mq, creds credentials.TransportCredentials, interceptors ...grpc.UnaryServerInterceptor) *GrpcServer {
+func NewGrpcServer(mqService definition.Mq, creds credentials.TransportCredentials, unaryInterceptors []grpc.UnaryServerInterceptor, streamInterceptors []grpc.StreamServerInterceptor) *GrpcServer {
 	opts := []grpc.ServerOption{
 		grpc.Creds(creds),
 	}
 
-	// 添加拦截器
-	if len(interceptors) > 0 {
-		opts = append(opts, grpc.ChainUnaryInterceptor(interceptors...))
+	// 添加一元拦截器
+	if len(unaryInterceptors) > 0 {
+		opts = append(opts, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+	}
+
+	// 添加流式拦截器
+	if len(streamInterceptors) > 0 {
+		opts = append(opts, grpc.ChainStreamInterceptor(streamInterceptors...))
 	}
 
 	server := grpc.NewServer(opts...)
@@ -302,4 +307,39 @@ func (s *GrpcServer) DeleteKeyValue(ctx context.Context, req *pb.DeleteKeyValueR
 		}
 	}
 	return resp, nil
+}
+
+// ReadByStream 流式读取消息
+func (s *GrpcServer) ReadByStream(req *pb.ReadRequest, stream pb.MQ_ReadByStreamServer) error {
+	timeout := time.Duration(req.Timeout) * time.Second
+	msgs, err := s.mqService.Read(req.Mq, int(req.Num), timeout)
+
+	if err != nil {
+		if be, ok := err.(*errors.BusinessError); ok {
+			switch be.Type {
+			case errors.ErrorTypeInvalidInput:
+				return status.Error(codes.InvalidArgument, be.Message)
+			case errors.ErrorTypeNotFound:
+				return status.Error(codes.NotFound, be.Message)
+			default:
+				return status.Error(codes.Internal, be.Message)
+			}
+		}
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	// 逐个发送消息到流
+	for _, msg := range msgs {
+		pbMsg := &pb.Msg{
+			Id:        msg.Id,
+			Text:      msg.Text,
+			CreatedAt: msg.CreatedAt.Unix(),
+		}
+
+		if err := stream.Send(pbMsg); err != nil {
+			return status.Error(codes.Internal, "failed to send message: "+err.Error())
+		}
+	}
+
+	return nil
 }

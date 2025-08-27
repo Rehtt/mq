@@ -10,6 +10,7 @@ import (
 
 	"github.com/Rehtt/mq/internal/mq"
 	"github.com/Rehtt/mq/server"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -63,7 +64,8 @@ func main() {
 	grpcServer := server.NewGrpcServer(
 		mqService,
 		creds,
-		authInterceptor.UnaryInterceptor(),
+		[]grpc.UnaryServerInterceptor{authInterceptor.UnaryInterceptor()},
+		[]grpc.StreamServerInterceptor{authInterceptor.StreamInterceptor()},
 	)
 
 	// 在goroutine中启动服务器

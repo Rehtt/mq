@@ -1440,12 +1440,13 @@ const file_api_proto_mq_proto_rawDesc = "" +
 	"\x02mq\x18\x01 \x01(\tR\x02mq\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\".\n" +
 	"\x16DeleteKeyValueResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error2\xee\x04\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error2\x9a\x05\n" +
 	"\x02MQ\x125\n" +
 	"\bCreateMq\x12\x13.mq.CreateMqRequest\x1a\x14.mq.CreateMqResponse\x125\n" +
 	"\bDeleteMq\x12\x13.mq.DeleteMqRequest\x1a\x14.mq.DeleteMqResponse\x12)\n" +
 	"\x04Push\x12\x0f.mq.PushRequest\x1a\x10.mq.PushResponse\x12)\n" +
-	"\x04Read\x12\x0f.mq.ReadRequest\x1a\x10.mq.ReadResponse\x12&\n" +
+	"\x04Read\x12\x0f.mq.ReadRequest\x1a\x10.mq.ReadResponse\x12*\n" +
+	"\fReadByStream\x12\x0f.mq.ReadRequest\x1a\a.mq.Msg0\x01\x12&\n" +
 	"\x03Pop\x12\x0e.mq.PopRequest\x1a\x0f.mq.PopResponse\x12/\n" +
 	"\x06Delete\x12\x11.mq.DeleteRequest\x1a\x12.mq.DeleteResponse\x12)\n" +
 	"\x04Drop\x12\x0f.mq.DropRequest\x1a\x10.mq.DropResponse\x12/\n" +
@@ -1504,28 +1505,30 @@ var file_api_proto_mq_proto_depIdxs = []int32{
 	4,  // 4: mq.MQ.DeleteMq:input_type -> mq.DeleteMqRequest
 	6,  // 5: mq.MQ.Push:input_type -> mq.PushRequest
 	8,  // 6: mq.MQ.Read:input_type -> mq.ReadRequest
-	10, // 7: mq.MQ.Pop:input_type -> mq.PopRequest
-	12, // 8: mq.MQ.Delete:input_type -> mq.DeleteRequest
-	14, // 9: mq.MQ.Drop:input_type -> mq.DropRequest
-	16, // 10: mq.MQ.Active:input_type -> mq.ActiveRequest
-	18, // 11: mq.MQ.Len:input_type -> mq.LenRequest
-	20, // 12: mq.MQ.SetKeyValue:input_type -> mq.SetKeyValueRequest
-	22, // 13: mq.MQ.GetKeyValue:input_type -> mq.GetKeyValueRequest
-	24, // 14: mq.MQ.DeleteKeyValue:input_type -> mq.DeleteKeyValueRequest
-	3,  // 15: mq.MQ.CreateMq:output_type -> mq.CreateMqResponse
-	5,  // 16: mq.MQ.DeleteMq:output_type -> mq.DeleteMqResponse
-	7,  // 17: mq.MQ.Push:output_type -> mq.PushResponse
-	9,  // 18: mq.MQ.Read:output_type -> mq.ReadResponse
-	11, // 19: mq.MQ.Pop:output_type -> mq.PopResponse
-	13, // 20: mq.MQ.Delete:output_type -> mq.DeleteResponse
-	15, // 21: mq.MQ.Drop:output_type -> mq.DropResponse
-	17, // 22: mq.MQ.Active:output_type -> mq.ActiveResponse
-	19, // 23: mq.MQ.Len:output_type -> mq.LenResponse
-	21, // 24: mq.MQ.SetKeyValue:output_type -> mq.SetKeyValueResponse
-	23, // 25: mq.MQ.GetKeyValue:output_type -> mq.GetKeyValueResponse
-	25, // 26: mq.MQ.DeleteKeyValue:output_type -> mq.DeleteKeyValueResponse
-	15, // [15:27] is the sub-list for method output_type
-	3,  // [3:15] is the sub-list for method input_type
+	8,  // 7: mq.MQ.ReadByStream:input_type -> mq.ReadRequest
+	10, // 8: mq.MQ.Pop:input_type -> mq.PopRequest
+	12, // 9: mq.MQ.Delete:input_type -> mq.DeleteRequest
+	14, // 10: mq.MQ.Drop:input_type -> mq.DropRequest
+	16, // 11: mq.MQ.Active:input_type -> mq.ActiveRequest
+	18, // 12: mq.MQ.Len:input_type -> mq.LenRequest
+	20, // 13: mq.MQ.SetKeyValue:input_type -> mq.SetKeyValueRequest
+	22, // 14: mq.MQ.GetKeyValue:input_type -> mq.GetKeyValueRequest
+	24, // 15: mq.MQ.DeleteKeyValue:input_type -> mq.DeleteKeyValueRequest
+	3,  // 16: mq.MQ.CreateMq:output_type -> mq.CreateMqResponse
+	5,  // 17: mq.MQ.DeleteMq:output_type -> mq.DeleteMqResponse
+	7,  // 18: mq.MQ.Push:output_type -> mq.PushResponse
+	9,  // 19: mq.MQ.Read:output_type -> mq.ReadResponse
+	0,  // 20: mq.MQ.ReadByStream:output_type -> mq.Msg
+	11, // 21: mq.MQ.Pop:output_type -> mq.PopResponse
+	13, // 22: mq.MQ.Delete:output_type -> mq.DeleteResponse
+	15, // 23: mq.MQ.Drop:output_type -> mq.DropResponse
+	17, // 24: mq.MQ.Active:output_type -> mq.ActiveResponse
+	19, // 25: mq.MQ.Len:output_type -> mq.LenResponse
+	21, // 26: mq.MQ.SetKeyValue:output_type -> mq.SetKeyValueResponse
+	23, // 27: mq.MQ.GetKeyValue:output_type -> mq.GetKeyValueResponse
+	25, // 28: mq.MQ.DeleteKeyValue:output_type -> mq.DeleteKeyValueResponse
+	16, // [16:29] is the sub-list for method output_type
+	3,  // [3:16] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name

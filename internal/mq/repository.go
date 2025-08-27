@@ -143,20 +143,64 @@ func (r *SQLiteRepository) UpdateRetryTime(mq string, retryTime *time.Time, ids 
 
 // SetKeyValue 设置键值对
 func (r *SQLiteRepository) SetKeyValue(mq string, key string, value *definition.Value) error {
-	// TODO: 实现KV存储
-	return nil
+	tableName := KEY_VALUE_TABLE_PREFIX + mq
+
+	// 确保表存在
+	if err := r.db.Table(tableName).Migrator().CreateTable(&DBKV{}); err != nil {
+		// 如果表已存在，CreateTable会返回错误，这是预期的
+	}
+
+	// 准备KV数据
+	kv := r.kvPool.Get().(*DBKV)
+	defer r.kvPool.Put(kv)
+
+	kv.Key = key
+	kv.Value = value.Value
+	kv.UpdatedAt = value.UpdatedAt
+	kv.ExpireAt = value.ExpireAt
+
+	// 使用UPSERT操作（如果记录存在则更新，不存在则插入）
+	err := r.db.Table(tableName).Where("key = ?", key).Assign(kv).FirstOrCreate(kv).Error
+	return err
 }
 
 // GetKeyValue 获取键值对
 func (r *SQLiteRepository) GetKeyValue(mq string, key string) (*definition.Value, bool, error) {
-	// TODO: 实现KV获取
-	return nil, false, nil
+	tableName := KEY_VALUE_TABLE_PREFIX + mq
+
+	kv := r.kvPool.Get().(*DBKV)
+	defer r.kvPool.Put(kv)
+
+	err := r.db.Table(tableName).Where("key = ?", key).First(kv).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+
+	// 检查是否过期
+	if !kv.ExpireAt.IsZero() && time.Now().After(kv.ExpireAt) {
+		// 删除过期记录
+		r.db.Table(tableName).Where("key = ?", key).Delete(kv)
+		return nil, false, nil
+	}
+
+	value := &definition.Value{
+		Value:     kv.Value,
+		UpdatedAt: kv.UpdatedAt,
+		ExpireAt:  kv.ExpireAt,
+	}
+
+	return value, true, nil
 }
 
 // DeleteKeyValue 删除键值对
 func (r *SQLiteRepository) DeleteKeyValue(mq string, key string) error {
-	// TODO: 实现KV删除
-	return nil
+	tableName := KEY_VALUE_TABLE_PREFIX + mq
+
+	err := r.db.Table(tableName).Where("key = ?", key).Delete(&DBKV{}).Error
+	return err
 }
 
 // LoadAllMQ 加载所有队列数据
@@ -200,7 +244,29 @@ func (r *SQLiteRepository) LoadAllMQ() *maps.ConcurrentMap[*MqMsg] {
 func (r *SQLiteRepository) LoadAllKV() *maps.ConcurrentMap[*definition.Value] {
 	m := maps.NewConcurrentMap[*definition.Value]()
 
-	// TODO: 实现KV数据加载
+	tableNames := r.getAllKvTableNames()
+	for _, name := range tableNames {
+		var tmp []*DBKV
+		r.db.Table(name).Find(&tmp)
+
+		for _, kv := range tmp {
+			// 检查是否过期
+			if !kv.ExpireAt.IsZero() && time.Now().After(kv.ExpireAt) {
+				// 删除过期记录
+				r.db.Table(name).Where("key = ?", kv.Key).Delete(kv)
+				continue
+			}
+
+			queueName := ss.TrimPrefix(name, KEY_VALUE_TABLE_PREFIX)
+			// 生成键值对的键名：genKeyValueKey(mq, key)
+			keyName := "keyvalue:" + queueName + ":" + kv.Key
+			m.Set(keyName, &definition.Value{
+				Value:     kv.Value,
+				UpdatedAt: kv.UpdatedAt,
+				ExpireAt:  kv.ExpireAt,
+			})
+		}
+	}
 
 	return m
 }
@@ -272,6 +338,13 @@ func (r *SQLiteRepository) handleWriteMq(node *writeMqNode) {
 func (r *SQLiteRepository) getAllMqTableNames() []string {
 	var names []string
 	r.db.Table("sqlite_master").Where("type = 'table' AND name LIKE ?", MQ_TABLE_PREFIX+"%").
+		Select("name").Pluck("name", &names)
+	return names
+}
+
+func (r *SQLiteRepository) getAllKvTableNames() []string {
+	var names []string
+	r.db.Table("sqlite_master").Where("type = 'table' AND name LIKE ?", KEY_VALUE_TABLE_PREFIX+"%").
 		Select("name").Pluck("name", &names)
 	return names
 }

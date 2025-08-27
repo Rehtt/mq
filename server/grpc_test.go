@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -133,16 +134,22 @@ func setupTestServer(t *testing.T, mqService definition.Mq, password string) (*g
 	// 使用insecure凭据进行测试
 	creds := insecure.NewCredentials()
 
-	var interceptors []grpc.UnaryServerInterceptor
+	var unaryInterceptors []grpc.UnaryServerInterceptor
+	var streamInterceptors []grpc.StreamServerInterceptor
+
 	if password != "" {
 		auth := NewAuthInterceptor(password)
-		interceptors = append(interceptors, auth.UnaryInterceptor())
+		unaryInterceptors = append(unaryInterceptors, auth.UnaryInterceptor())
+		streamInterceptors = append(streamInterceptors, auth.StreamInterceptor())
 	}
 
 	// 创建服务器选项
 	opts := []grpc.ServerOption{}
-	if len(interceptors) > 0 {
-		opts = append(opts, grpc.ChainUnaryInterceptor(interceptors...))
+	if len(unaryInterceptors) > 0 {
+		opts = append(opts, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+	}
+	if len(streamInterceptors) > 0 {
+		opts = append(opts, grpc.ChainStreamInterceptor(streamInterceptors...))
 	}
 
 	server := grpc.NewServer(opts...)
@@ -401,5 +408,137 @@ func TestGrpcServer_KeyValue(t *testing.T) {
 
 	if delResp.Error != "" {
 		t.Errorf("expected no error, got %s", delResp.Error)
+	}
+}
+
+func TestGrpcServer_ReadByStream(t *testing.T) {
+	testTime := time.Now()
+	mockService := &mockMqService{
+		readFunc: func(mq string, num int, timeout time.Duration) ([]definition.Msg, error) {
+			return []definition.Msg{
+				{Id: 1, Text: "stream-message1", CreatedAt: testTime},
+				{Id: 2, Text: "stream-message2", CreatedAt: testTime},
+			}, nil
+		},
+	}
+
+	conn, cleanup := setupTestServer(t, mockService, "")
+	defer cleanup()
+
+	client := pb.NewMQClient(conn)
+	ctx := context.Background()
+
+	stream, err := client.ReadByStream(ctx, &pb.ReadRequest{
+		Mq:      "test-queue",
+		Num:     2,
+		Timeout: 10,
+	})
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// 读取流中的消息
+	var messages []*pb.Msg
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			// 流结束
+			break
+		}
+		messages = append(messages, msg)
+	}
+
+	if len(messages) != 2 {
+		t.Errorf("expected 2 messages from stream, got %d", len(messages))
+	}
+
+	if messages[0].Id != 1 {
+		t.Errorf("expected first message id 1, got %d", messages[0].Id)
+	}
+
+	if messages[0].Text != "stream-message1" {
+		t.Errorf("expected first message text 'stream-message1', got %s", messages[0].Text)
+	}
+
+	if messages[1].Id != 2 {
+		t.Errorf("expected second message id 2, got %d", messages[1].Id)
+	}
+
+	if messages[1].Text != "stream-message2" {
+		t.Errorf("expected second message text 'stream-message2', got %s", messages[1].Text)
+	}
+}
+
+func TestGrpcServer_ReadByStream_WithAuth(t *testing.T) {
+	mockService := &mockMqService{
+		readFunc: func(mq string, num int, timeout time.Duration) ([]definition.Msg, error) {
+			return []definition.Msg{
+				{Id: 1, Text: "auth-message", CreatedAt: time.Now()},
+			}, nil
+		},
+	}
+
+	conn, cleanup := setupTestServer(t, mockService, "secret")
+	defer cleanup()
+
+	client := pb.NewMQClient(conn)
+
+	// 测试没有认证的情况
+	ctx := context.Background()
+	stream, err := client.ReadByStream(ctx, &pb.ReadRequest{
+		Mq:      "test-queue",
+		Num:     1,
+		Timeout: 10,
+	})
+
+	if err == nil {
+		// 尝试从流中读取消息，这时应该会出现认证错误
+		_, err = stream.Recv()
+		if err == nil {
+			t.Errorf("expected authentication error, got nil")
+			return
+		}
+		// 检查是否是认证错误
+		if st, ok := status.FromError(err); ok {
+			if st.Code() != codes.Unauthenticated {
+				t.Errorf("expected Unauthenticated error, got %v", st.Code())
+			}
+		} else {
+			t.Errorf("expected gRPC status error, got %T", err)
+		}
+	} else {
+		// 检查是否是认证错误
+		if st, ok := status.FromError(err); ok {
+			if st.Code() != codes.Unauthenticated {
+				t.Errorf("expected Unauthenticated error, got %v", st.Code())
+			}
+		} else {
+			t.Errorf("expected gRPC status error, got %T", err)
+		}
+	}
+
+	// 测试有正确认证的情况
+	md := metadata.Pairs("authorization", "Bearer @secret@")
+	authCtx := metadata.NewOutgoingContext(context.Background(), md)
+
+	stream, err = client.ReadByStream(authCtx, &pb.ReadRequest{
+		Mq:      "test-queue",
+		Num:     1,
+		Timeout: 10,
+	})
+
+	if err != nil {
+		t.Errorf("unexpected error with valid auth: %v", err)
+	}
+
+	// 读取一条消息验证认证成功
+	msg, err := stream.Recv()
+	if err != nil {
+		t.Errorf("failed to receive message: %v", err)
+	}
+
+	if msg.Text != "auth-message" {
+		t.Errorf("expected message text 'auth-message', got %s", msg.Text)
 	}
 }

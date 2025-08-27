@@ -5,6 +5,7 @@
 ### 功能
 - [x] 创建/删除/清空队列：`CreateMq` / `DeleteMq` / `Drop`
 - [x] 写入/读取/弹出消息：`Push` / `Read`（带超时隐藏）/ `Pop`
+- [x] 流式读取消息：`ReadByStream`（返回消息通道，支持流式处理）
 - [x] 删除/归档消息：`Delete` / `Active`
 - [x] 队列长度：`Len`
 - [x] KV 能力：`SetKeyValue` / `GetKeyValue` / `DeleteKeyValue`
@@ -75,6 +76,13 @@ func main() {
 
     id, _ := client.Push(mq, "hello")
     msgs, _ := client.Read(mq, 1, 2*time.Second)
+    
+    // 流式读取消息
+    msgChan, _ := client.ReadByStream(mq, 3, 5*time.Second)
+    for msg := range msgChan {
+        log.Printf("Stream message: ID=%d, Text=%s", msg.Id, msg.Text)
+    }
+    
     _ = client.Active(mq, id)
     l, _ := client.Len(mq)
     _ = client.SetKeyValue(mq, "k", "v", 5*time.Second)
