@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log/slog"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Rehtt/Kit/cli"
 	"github.com/Rehtt/mq/internal/mq"
 	"github.com/Rehtt/mq/server"
 	"google.golang.org/grpc"
@@ -15,17 +17,30 @@ import (
 )
 
 var (
-	addr     = flag.String("addr", ":1234", "server address")
-	workPath = flag.String("path", "./", "work path")
+	addr     = cli.String("addr", ":1234", "server address")
+	workPath = cli.String("path", "./", "work path")
 
-	tlsCertFile = flag.String("cert", "cert.pem", "tls cert file")
-	tlsKeyFile  = flag.String("key", "key.pem", "tls key file")
+	tlsCertFile = cli.String("cert", "cert.pem", "tls cert file")
+	tlsKeyFile  = cli.String("key", "key.pem", "tls key file")
 
-	password = flag.String("password", "", "password")
+	password = cli.String("password", "", "password")
 )
 
+var Exit = errors.New("EXIT 0")
+
 func main() {
-	flag.Parse()
+	genTLS := cli.NewCLI("gen-tls", "生成TLS证书\ngen-tls <cert> <key>", flag.ExitOnError)
+	genTLS.CommandFunc = func(args []string) error {
+		cert, key := GenerateTLSConfig()
+		os.WriteFile(*tlsCertFile, cert, 0o644)
+		os.WriteFile(*tlsKeyFile, key, 0o644)
+		return Exit
+	}
+	cli.AddCommand(genTLS)
+	switch cli.Parse() {
+	case Exit:
+		os.Exit(0)
+	}
 
 	showInfo()
 

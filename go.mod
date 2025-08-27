@@ -3,7 +3,7 @@ module github.com/Rehtt/mq
 go 1.24
 
 require (
-	github.com/Rehtt/Kit v0.1.9-0.20250312115212-b21dd077bea4
+	github.com/Rehtt/Kit v0.1.10-0.20250826025350-6c1dde7f0f0d
 	github.com/glebarez/sqlite v1.11.0
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.6
